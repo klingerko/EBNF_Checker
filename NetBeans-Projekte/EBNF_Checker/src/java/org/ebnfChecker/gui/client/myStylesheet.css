@@ -1,0 +1,101 @@
+.gwt-Button {
+    font-family: Roboto,sans-serif;
+    font-size: 120%;
+}
+
+.gwt-Anchor {
+    font-family: Roboto,sans-serif;
+    margin-left: 5px;
+}
+
+.gwt-Label { 
+    font-family: Roboto,sans-serif;
+}
+
+.gwt-HTML {
+    font-family: Roboto,sans-serif;
+    font-size: 120%;
+}
+
+
+#buttonGrammatik-id {
+    margin-bottom: 25px;
+}
+
+#buttonGrammatikRichtig-id {
+    margin-bottom: 25px;
+    background-color: #0ABB1B;
+}
+
+#buttonGrammatikFalsch-id {
+    margin-bottom: 25px;
+    background-color: #FF0033;
+}
+
+#buttonEingabe-id {
+}
+
+#buttonEingabeRichtig-id {
+    background-color: #0ABB1B;
+}
+#buttonEingabeFalsch-id {
+    background-color: #FF0033;
+}
+
+#popUpTextRichtig-id {
+    background-color: #0ABB1B;
+}
+
+#popUpTextFalsch-id {
+    background-color: #FF0033;
+}
+
+#baumText-id {
+    background-color: #CCCCCC;
+    font-family: Roboto,sans-serif;
+    font-size: 75%;
+}
+
+#hSeite-id {
+    margin-left: 20px;
+}
+
+#resetAll-id {
+    margin-bottom: 30px;
+    margin-top: 3px;
+    font-weight: bold;
+}
+
+#ebnfCheckerLogo-id {
+    margin-left: 205px;
+    margin-bottom: 15px;
+}
+
+#button-id {
+    font-size: 75%;
+}
+
+#baumAnzeige-id {
+    font-family: Roboto,sans-serif;
+    margin-top: 122px;
+    /*105*/
+}
+
+#textBeschreibung-id {
+    font-size: 100%;
+    margin-top: 10px;
+}
+
+#vRechts-id {
+    margin-left: 10px;
+}
+
+#test-id {
+    color: red;
+}
+
+#aboutText-id {
+    background-color: #CCCCCC;
+    text-align: justify;
+    width: 800px;
+}

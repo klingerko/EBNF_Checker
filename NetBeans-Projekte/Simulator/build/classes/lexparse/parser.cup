@@ -1,0 +1,250 @@
+package lexparse;
+
+import java_cup.runtime.ComplexSymbolFactory;
+import java_cup.runtime.Symbol;
+import java.util.HashMap;
+import java.util.List;
+import java.util.LinkedList;
+import tree.*;
+
+class Parser;
+
+parser code {:
+
+    private HashMap<String, BinaryTree> treeMap = new HashMap<String, BinaryTree>(); //Syntaxbäume der korrekt geparsten Regeln
+    private String parserAusgabe = ""; //Fehlerausgabe des Parsers
+    private boolean syntaxError = false; //Anzeigen, dass ein SyntaxFehler aufgetreten ist
+    private ComplexSymbolFactory.ComplexSymbol aktuelleRegel;
+
+    public Parser(Scanner lex, ComplexSymbolFactory sf) {
+        super(lex,sf);
+    }
+
+    @Override
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+    }
+
+    //Fehlerbehandlung mit Zeilen- und Spaltenausgabe
+    @Override
+    public void report_error(String message, Object info) {
+        syntaxError = true;
+        String m = "Error";
+        if (info instanceof ComplexSymbolFactory.ComplexSymbol) {
+            ComplexSymbolFactory.ComplexSymbol s = ((ComplexSymbolFactory.ComplexSymbol) info);               
+            m += " for input symbol " + s.getName() + " in line " + s.xleft.getLine() + ", column " + s.xright.getColumn() + ": " + message;
+        } else {
+            m += ": " + message;
+        }
+        ausgabe(m);
+    }
+
+    //Anzeige der erwarteten Symbole nach Fehler (nicht kompatibel mit GWT 2.5)
+    /*@Override
+    protected void report_expected_token_ids(){
+        List<Integer> ids = expected_token_ids();
+	LinkedList<String> list = new LinkedList<String>();
+	for (Integer expected : ids){
+            list.add(symbl_name_from_id(expected));
+	}
+	//System.out.println("instead expected token classes are "+list);
+        ausgabe("instead expected token classes are "+list);
+    }*/
+
+    private void ausgabe(String s) {
+        if(parserAusgabe.equals("")) {
+            parserAusgabe = s;
+        } else if(!s.equals("")) {
+            parserAusgabe = parserAusgabe + "\n" + s;
+        }
+    }
+
+    public String getParserAusgabe() {
+        String s = parserAusgabe;
+        parserAusgabe = "";
+        return s;
+    }
+    
+    public boolean isSyntaxError() {
+        return syntaxError;
+    }
+
+:}; 
+
+//Terminale (Token)
+terminal        ZUWEISUNG, ENDE, KLAMMER_AUF, KLAMMER_ZU, ODER, OPTION_AUF, OPTION_ZU, WDH_AUF, WDH_ZU;
+terminal String TERMINAL, NICHTTERMINAL;
+
+//Nichtterminale (Regeln)
+non terminal    HashMap<String, BinaryTree>     initial;
+non terminal                                    syntax;
+non terminal    Node                            production;
+non terminal    Node                            alternative;
+non terminal    Node                            reihe;
+non terminal    Node                            klammer;
+non terminal    Node                            option;
+non terminal    Node                            wiederholung;
+non terminal    Node                            factor;
+
+//Prioritäten
+precedence left OPTION_AUF, OPTION_ZU;
+precedence left WDH_AUF, WDH_ZU;
+precedence left KLAMMER_AUF, KLAMMER_ZU;
+
+//Grammatikregeln
+start with initial;
+
+initial ::=    syntax:s
+            {:
+                //Als Rückgabewert beim Parsen, erhält man eine HashMap mit den Syntaxbäumen aller Regeln
+                RESULT = treeMap;
+            :}           
+            ;
+
+//"Selbstdefinition" der EBNF
+syntax ::=  syntax:s production:p
+            {:
+                BinaryTree tree = new BinaryTree(p);
+                //Optimierungen am Syntaxbaum
+                tree.optimiereAlternative(tree.getRoot());
+                tree.optimiereReihe(tree.getRoot());
+                tree.entferneKlammern(tree.getRoot(), treeMap);
+                tree.ersetzeMittigeRekursion(tree.getRoot());
+                tree.optimiereAlternative(tree.getRoot());
+                tree.optimiereReihe(tree.getRoot());
+                if(treeMap.containsKey(tree.getRoot().getValue())) {
+                    //Regel schon vorhanden => Fehler
+                    report_error("This rule is already defined", aktuelleRegel);
+                } else {
+                    //Regel noch nicht vorhanden => Hinzufügen
+                    treeMap.put(tree.getRoot().getValue(), tree);
+                }
+                if(tree.erkenneLinksRekursion(tree.getRoot())){
+                    report_error("This rule is left-recursive (interpreting not supported)",aktuelleRegel);
+                }
+            :}
+            | production:p
+            {:
+                BinaryTree tree = new BinaryTree(p);
+                //Optimierungen am Syntaxbaum
+                tree.optimiereAlternative(tree.getRoot());
+                tree.optimiereReihe(tree.getRoot());
+                tree.entferneKlammern(tree.getRoot(), treeMap);
+                tree.ersetzeMittigeRekursion(tree.getRoot());
+                tree.optimiereAlternative(tree.getRoot());
+                tree.optimiereReihe(tree.getRoot());
+                if(treeMap.containsKey(tree.getRoot().getValue())) {
+                    //Regel schon vorhanden => Fehler
+                    report_error("This rule is already defined", aktuelleRegel);
+                } else {
+                    //Regel noch nicht vorhanden => Hinzufügen
+                    treeMap.put(tree.getRoot().getValue(), tree);
+                }
+                if(tree.erkenneLinksRekursion(tree.getRoot())){
+                    report_error("This rule is left-recursive (interpreting not supported)",aktuelleRegel);
+                }
+            :}
+            ;
+
+production ::=  NICHTTERMINAL:n ZUWEISUNG:z alternative:a ENDE:e
+                {:
+                    aktuelleRegel = ((java_cup.runtime.ComplexSymbolFactory.ComplexSymbol) CUP$Parser$stack.elementAt(CUP$Parser$top-3));
+                    Node temp = new Node(Type.P, n, null, a, null);
+                    Node end = new Node(Type.E, null, temp, null, null);
+                    temp.setRight(end);
+                    a.setTop(temp);
+                    RESULT = temp;
+                :}
+                ;
+
+alternative ::= alternative:a ODER:o reihe:r
+                {:  
+                    Node temp = new Node(Type.ALTERNATIVE, null, null, r, null);
+                    r.setTop(temp);
+                    //bei letztem Knoten rechts einfuegen
+                    Node zeiger = a;
+                    while(zeiger.getRight() != null) {
+                        zeiger = zeiger.getRight();
+                    }
+                    zeiger.setRight(temp);
+                    temp.setTop(zeiger);
+                    RESULT = a;
+                :}
+                | reihe:r
+                {:
+                    Node temp = new Node(Type.ALTERNATIVE, null, null, r, null);
+                    r.setTop(temp);
+                    RESULT = temp;
+                :}
+                ;
+
+reihe ::=   reihe:r factor:f
+            {:
+                Node temp = new Node(Type.REIHE, null, null, f, null);
+                f.setTop(temp);
+                //bei letztem Knoten rechts einfuegen
+                Node zeiger = r;
+                while(zeiger.getRight() != null) {
+                    zeiger = zeiger.getRight();
+                }
+                zeiger.setRight(temp);
+                temp.setTop(zeiger);
+                RESULT = r;
+            :}
+            | factor:f
+            {:
+                Node temp = new Node(Type.REIHE, null, null, f, null);
+                f.setTop(temp);
+                RESULT = temp;
+            :}
+            ;
+
+klammer ::= KLAMMER_AUF:k alternative:a KLAMMER_ZU:z
+            {:
+                Node temp = new Node(Type.KLAMMER, null, null, a, null);
+                a.setTop(temp);
+                RESULT = temp;
+            :}
+            ;
+
+option ::=  OPTION_AUF:o alternative:a OPTION_ZU:z
+            {:
+                Node temp = new Node(Type.OPTION, null, null, a, null);
+                a.setTop(temp);
+                RESULT = temp;
+            :}
+            ;
+
+wiederholung ::=    WDH_AUF:w alternative:a WDH_ZU:z
+                    {:
+                        Node temp = new Node(Type.WDH, null, null, a, null);
+                        a.setTop(temp);
+                        RESULT = temp;
+                    :}
+                    ;
+                
+factor ::=  NICHTTERMINAL:n
+            {:
+                RESULT = new Node(Type.NT, n, null, null, null);
+            :}
+            |
+            TERMINAL:t
+            {:
+                RESULT = new Node(Type.T, t, null, null, null);
+            :}
+            |
+            klammer:k
+            {:
+                RESULT = k;
+            :}
+            |
+            option:o
+            {:
+                RESULT = o;
+            :}
+            |
+            wiederholung:w
+            {:
+                RESULT = w;
+            :}
+            ;
