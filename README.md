@@ -6,3 +6,4 @@ This project (bachelor thesis) was about developing a web-based EBNF simulation 
 - EBNF interpreter (self-developed)
 - Web-based application (Google web toolkit)
 
+To run the application just make a git clone and then open "NetBeans-Projekte/EBNF_Checker/build/web/welcomeGWT.html" locally.
